@@ -21,6 +21,15 @@ dependencies = [
 ]
 
 
+[build-system]
+requires = ["maturin~=1.8"]
+build-backend = "maturin"
+
+[tool.maturin]
+python-source = "."
+module-name = "cs336_basics._cs336_a1_rust"
+manifest-path = "cs336_basics/_cs336_a1_rust/Cargo.toml"
+features = ["pyo3/extension-module"]
 
 [tool.setuptools.packages.find]
 include = ["cs336_basics"]
