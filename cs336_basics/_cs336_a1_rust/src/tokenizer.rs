@@ -406,7 +406,7 @@ newest newest newest newest newest newest"#;
     #[test]
     fn test_train_owt() -> anyhow::Result<()> {
         let input_path = PathBuf::from(
-            "/Users/hdevalence/code/stanford-cs336/cs336-assignment1-basics/data/owt-train.txt",
+            "/Users/hdevalence/code/stanford-cs336/cs336-assignment1-basics/data/owt_train.txt",
         );
         let vocab_size = 30_000;
         let special_tokens = vec!["<|endoftext|>".to_string()];
