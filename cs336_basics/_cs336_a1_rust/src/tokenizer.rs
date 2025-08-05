@@ -56,11 +56,6 @@ pub fn rust_run_train_bpe(
     let mut merge_list: Vec<(Vec<u8>, Vec<u8>)> = Default::default();
     while vocab.len() < vocab_size as usize {
         let merge = counts.find_next_merge();
-        println!(
-            "ROUND {} found merge {}",
-            vocab.len(),
-            debug_merge((&merge.0, &merge.1))
-        );
         let merged = merge_vecs(merge.0.clone(), merge.1.clone());
         vocab.insert(vocab.len() as u32, merged);
         merge_list.push(merge.clone());
@@ -121,26 +116,14 @@ impl SequenceTracker {
                 highest_pair = pair;
                 highest_score = score;
             } else if score == highest_score && pair != highest_pair {
-                println!(
-                    "tie breaking between current {} and {} at score {}",
-                    debug_merge(*highest_pair),
-                    debug_merge(*pair),
-                    highest_score
-                );
+                // horrible, no good, replicating python nested lex order semantics
                 // kind of nasty but matches semantics of test cases exactly
-                let bytes_a = pair
+                if pair
                     .0
-                    .iter()
-                    .chain(pair.1.iter())
-                    .cloned()
-                    .collect::<Vec<u8>>();
-                let bytes_b = highest_pair
-                    .0
-                    .iter()
-                    .chain(highest_pair.1.iter())
-                    .cloned()
-                    .collect::<Vec<u8>>();
-                if bytes_a > bytes_b {
+                    .cmp(highest_pair.0)
+                    .then_with(|| pair.1.cmp(highest_pair.1))
+                    == std::cmp::Ordering::Greater
+                {
                     highest_pair = pair;
                     highest_score = score;
                 }
@@ -183,6 +166,7 @@ impl SequenceTracker {
     }
 }
 
+#[allow(unused)]
 fn debug_merge(m: (&Vec<u8>, &Vec<u8>)) -> String {
     let left_s = String::from_utf8_lossy(m.0);
     let right_s = String::from_utf8_lossy(m.1);
