@@ -389,9 +389,7 @@ newest newest newest newest newest newest"#;
         let vocab_size = 10_000;
         let special_tokens = vec!["<|endoftext|>".to_string()];
 
-        println!("got here");
         let (vocab, merges) = rust_run_train_bpe(input_path, vocab_size, special_tokens).unwrap();
-        println!("got Here");
 
         write_vocab("test-tinystories-vocab.txt".into(), vocab.clone())?;
         write_merges("test-tinystories-merges.txt".into(), merges.clone())?;
@@ -404,4 +402,25 @@ newest newest newest newest newest newest"#;
 
         Ok(())
     }
+
+    #[test]
+    fn test_train_owt() -> anyhow::Result<()> {
+        let input_path = PathBuf::from(
+            "/Users/hdevalence/code/stanford-cs336/cs336-assignment1-basics/data/owt-train.txt",
+        );
+        let vocab_size = 30_000;
+        let special_tokens = vec!["<|endoftext|>".to_string()];
+
+        let (vocab, merges) = rust_run_train_bpe(input_path, vocab_size, special_tokens).unwrap();
+
+        write_vocab("test-owt-vocab.txt".into(), vocab.clone())?;
+        write_merges("test-owt-merges.txt".into(), merges.clone())?;
+
+        let vocab2 = read_vocab("test-owt-vocab.txt".into())?;
+        let merges2 = read_merges("test-owt-merges.txt".into())?;
+
+        assert_eq!(vocab, vocab2);
+        assert_eq!(merges, merges2);
+
+        Ok(())
 }
