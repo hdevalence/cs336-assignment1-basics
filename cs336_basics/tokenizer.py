@@ -2,7 +2,8 @@ import os
 
 from cs336_basics._cs336_a1_rust import rust_run_train_bpe
 
-__all__ = ['run_train_bpe']
+__all__ = ["run_train_bpe"]
+
 
 def run_train_bpe(
     input_path: str | os.PathLike,
