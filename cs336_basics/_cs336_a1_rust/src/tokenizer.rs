@@ -1,9 +1,81 @@
 use std::collections::{BTreeMap, HashMap};
+use std::fs::File;
+use std::io::{BufReader, prelude::*};
 use std::path::PathBuf;
 
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use regex::Regex;
+
+#[pyfunction]
+pub fn write_vocab(path: PathBuf, vocab: BTreeMap<u32, Vec<u8>>) -> anyhow::Result<()> {
+    let mut vf = File::create(path)?;
+    for token in vocab.values() {
+        writeln!(vf, "{}", String::from_utf8(escape_bytes::escape(token))?)?;
+    }
+
+    Ok(())
+}
+
+#[pyfunction]
+pub fn read_vocab(path: PathBuf) -> anyhow::Result<BTreeMap<u32, Vec<u8>>> {
+    let mut vf = BufReader::new(File::open(path)?);
+    let mut vocab = BTreeMap::new();
+    let mut line = String::new();
+    while let Ok(size) = vf.read_line(&mut line) {
+        if size == 0 {
+            break;
+        }
+        let line_no_newline = line.strip_suffix('\n').unwrap_or(&line);
+        let token = escape_bytes::unescape(line_no_newline.as_bytes())
+            .map_err(|e| anyhow::anyhow!("unescape err {:?}", e))?;
+        vocab.insert(vocab.len() as u32, token);
+        line.clear();
+    }
+    Ok(vocab)
+}
+
+#[pyfunction]
+pub fn write_merges(path: PathBuf, merges: Vec<(Vec<u8>, Vec<u8>)>) -> anyhow::Result<()> {
+    let mut mf = File::create(path)?;
+    for merge in merges {
+        writeln!(
+            mf,
+            "{}\t{}",
+            String::from_utf8(escape_bytes::escape(&merge.0))?,
+            String::from_utf8(escape_bytes::escape(&merge.1))?,
+        )?;
+    }
+
+    Ok(())
+}
+
+#[pyfunction]
+pub fn read_merges(path: PathBuf) -> anyhow::Result<Vec<(Vec<u8>, Vec<u8>)>> {
+    let mut vf = BufReader::new(File::open(path)?);
+    let mut merges = Vec::new();
+    let mut line = String::new();
+    while let Ok(size) = vf.read_line(&mut line) {
+        if size == 0 {
+            break;
+        }
+        let line_no_newline = line.strip_suffix('\n').unwrap_or(&line);
+        if let Some((left, right)) = line_no_newline.split_once('\t') {
+            let left = escape_bytes::unescape(left.as_bytes())
+                .map_err(|e| anyhow::anyhow!("unescape err {:?}", e))?;
+            let right = escape_bytes::unescape(right.as_bytes())
+                .map_err(|e| anyhow::anyhow!("unescape err {:?}", e))?;
+            merges.push((left, right));
+        } else {
+            return Err(anyhow::anyhow!(
+                "line did not have two tab separated parts {:?}",
+                line_no_newline
+            ));
+        }
+        line.clear()
+    }
+    Ok(merges)
+}
 
 #[pyfunction]
 pub fn rust_run_train_bpe(
@@ -54,7 +126,9 @@ pub fn rust_run_train_bpe(
     }
 
     let mut merge_list: Vec<(Vec<u8>, Vec<u8>)> = Default::default();
+    println!("starting merge loop");
     while vocab.len() < vocab_size as usize {
+        println!("vocab len {}", vocab.len());
         let merge = counts.find_next_merge();
         let merged = merge_vecs(merge.0.clone(), merge.1.clone());
         vocab.insert(vocab.len() as u32, merged);
@@ -281,14 +355,48 @@ newest newest newest newest newest newest"#;
     }
 
     #[test]
-    fn test_train_bpe() {
+    fn test_train_bpe() -> anyhow::Result<()> {
         let input_path = PathBuf::from(
             "/Users/hdevalence/code/stanford-cs336/cs336-assignment1-basics/tests/fixtures/corpus.en",
         );
-        let vocab_size = 500;
+        let vocab_size = 300;
         let special_tokens = vec!["<|endoftext|>".to_string()];
 
-        let result = rust_run_train_bpe(input_path, vocab_size, special_tokens);
-        assert!(result.is_ok());
+        let (vocab, merges) = rust_run_train_bpe(input_path, vocab_size, special_tokens)?;
+
+        write_vocab("test-fixtures-vocab.txt".into(), vocab.clone())?;
+        write_merges("test-fixtures-merges.txt".into(), merges.clone())?;
+
+        let vocab2 = read_vocab("test-fixtures-vocab.txt".into())?;
+        let merges2 = read_merges("test-fixtures-merges.txt".into())?;
+
+        assert_eq!(vocab, vocab2);
+        assert_eq!(merges, merges2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_train_tinystories() -> anyhow::Result<()> {
+        let input_path = PathBuf::from(
+            "/Users/hdevalence/code/stanford-cs336/cs336-assignment1-basics/data/TinyStoriesV2-GPT4-train.txt",
+        );
+        let vocab_size = 10_000;
+        let special_tokens = vec!["<|endoftext|>".to_string()];
+
+        println!("got here");
+        let (vocab, merges) = rust_run_train_bpe(input_path, vocab_size, special_tokens).unwrap();
+        println!("got Here");
+
+        write_vocab("test-tinystories-vocab.txt".into(), vocab.clone())?;
+        write_merges("test-tinystories-merges.txt".into(), merges.clone())?;
+
+        let vocab2 = read_vocab("test-tinystories-vocab.txt".into())?;
+        let merges2 = read_merges("test-tinystories-merges.txt".into())?;
+
+        assert_eq!(vocab, vocab2);
+        assert_eq!(merges, merges2);
+
+        Ok(())
     }
 }

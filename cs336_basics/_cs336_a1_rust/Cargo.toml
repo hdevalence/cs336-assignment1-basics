@@ -13,6 +13,7 @@ regex = "1"
 fancy-regex = "0.16"
 anyhow = "1"
 rayon = "1"
+escape-bytes = "0.1"
 
 [profile.release]
 debug = true
