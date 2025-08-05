@@ -423,4 +423,5 @@ newest newest newest newest newest newest"#;
         assert_eq!(merges, merges2);
 
         Ok(())
+    }
 }
