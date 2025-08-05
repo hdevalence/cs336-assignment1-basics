@@ -1,0 +1,8 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "./cs336_basics/_cs336_a1_rust/Cargo.toml"
+    ],
+    "[rust]": {
+        "editor.formatOnSave": true,
+    }
+}

@@ -5,7 +5,14 @@ edition = "2024"
 
 [lib]
 name = "_cs336_a1_rust"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
 
 [dependencies]
-pyo3 = { version = "0.24", features = ["extension-module"] }
+pyo3 = { version = "0.24", features = ["extension-module", "anyhow"] }
+regex = "1"
+fancy-regex = "0.16"
+anyhow = "1"
+rayon = "1"
+
+[profile.release]
+debug = true
