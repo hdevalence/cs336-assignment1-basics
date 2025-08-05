@@ -106,8 +106,15 @@ pub fn rust_run_train_bpe(
     // Run pre-tokenization and counting of chunks in parallel
     let pretok_re = gpt2_pretok_re();
     let partial_counts = corpus_chunks
-        .par_iter()
-        .map(|chunk| SequenceTracker::from_chunk(&pretok_re, chunk))
+        .into_par_iter()
+        .fold(
+            || SequenceTracker::default(),
+            |mut tracker: SequenceTracker, chunk: String| {
+                let new = SequenceTracker::from_chunk(&pretok_re, &chunk);
+                tracker.join_with(new);
+                tracker
+            },
+        )
         .collect_vec_list();
 
     // Fold into a single set of counts
@@ -126,9 +133,7 @@ pub fn rust_run_train_bpe(
     }
 
     let mut merge_list: Vec<(Vec<u8>, Vec<u8>)> = Default::default();
-    println!("starting merge loop");
     while vocab.len() < vocab_size as usize {
-        println!("vocab len {}", vocab.len());
         let merge = counts.find_next_merge();
         let merged = merge_vecs(merge.0.clone(), merge.1.clone());
         vocab.insert(vocab.len() as u32, merged);
