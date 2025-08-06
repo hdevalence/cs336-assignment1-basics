@@ -10,8 +10,13 @@ use regex::Regex;
 #[pyfunction]
 pub fn write_vocab(path: PathBuf, vocab: BTreeMap<u32, Vec<u8>>) -> anyhow::Result<()> {
     let mut vf = File::create(path)?;
-    for token in vocab.values() {
-        writeln!(vf, "{}", String::from_utf8(escape_bytes::escape(token))?)?;
+    for (id, token) in vocab {
+        writeln!(
+            vf,
+            "{}\t{}",
+            id,
+            String::from_utf8(escape_bytes::escape(token))?
+        )?;
     }
 
     Ok(())
@@ -27,9 +32,17 @@ pub fn read_vocab(path: PathBuf) -> anyhow::Result<BTreeMap<u32, Vec<u8>>> {
             break;
         }
         let line_no_newline = line.strip_suffix('\n').unwrap_or(&line);
-        let token = escape_bytes::unescape(line_no_newline.as_bytes())
-            .map_err(|e| anyhow::anyhow!("unescape err {:?}", e))?;
-        vocab.insert(vocab.len() as u32, token);
+        if let Some((left, right)) = line_no_newline.split_once('\t') {
+            let id: u32 = left.parse()?;
+            let token = escape_bytes::unescape(right.as_bytes())
+                .map_err(|e| anyhow::anyhow!("unescape err {:?}", e))?;
+            vocab.insert(id, token);
+        } else {
+            return Err(anyhow::anyhow!(
+                "line did not have two tab separated parts {:?}",
+                line_no_newline
+            ));
+        }
         line.clear();
     }
     Ok(vocab)
@@ -382,6 +395,7 @@ newest newest newest newest newest newest"#;
     }
 
     #[test]
+    #[ignore]
     fn test_train_tinystories() -> anyhow::Result<()> {
         let input_path = PathBuf::from(
             "/Users/hdevalence/code/stanford-cs336/cs336-assignment1-basics/data/TinyStoriesV2-GPT4-train.txt",
@@ -404,6 +418,7 @@ newest newest newest newest newest newest"#;
     }
 
     #[test]
+    #[ignore]
     fn test_train_owt() -> anyhow::Result<()> {
         let input_path = PathBuf::from(
             "/Users/hdevalence/code/stanford-cs336/cs336-assignment1-basics/data/owt_train.txt",
